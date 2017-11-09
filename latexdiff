@@ -2430,6 +2430,7 @@ sub preprocess {
     # transform \lstinline{...}
 #    s/\\lstinline(\[$brat0\])?(\{(?:.*?)\})/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
 #    s/\\lstinline(\[$brat0\])?((\S).*?\2)/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
+    1 while s/((?<!\\)%.*)\\(verb\*?|$LSTINLINEENV)/$1\\COMMENT$2/mg;
     s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/esg;
     s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/esg;
     s/\\(verb\*?|$LSTINLINEENV)([^\s\w])(.*?)\2/"\\DIF${1}{". tohash(\%verbhash,"${2}${3}${2}") ."}"/esg;
@@ -2868,6 +2869,7 @@ sub postprocess {
       ###if ( defined($packages{"listings"} and $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat0\])?\{color\}/))   { 
 	# mark added verbatim commands
       $addblock =~ s/\\DIFverb/\\DIFDIFaddverb/g;
+      1 while $addblock =~ s/((?<!\\)%.*)\\DIF($LSTINLINEENV)/$1\\DIFDIFadd$2/mg;
       $addblock =~ s/\\DIF($LSTINLINEENV)/\\DIFDIFadd$1/g;
       ###}
 #     splice in modified addblock
@@ -3082,6 +3084,7 @@ sub postprocess {
     1 while s/(%.*)\\CRIGHTBRACE (.*)$/$1\}$2/mg ;
     1 while s/(%.*)\\CLEFTBRACE (.*)$/$1\{$2/mg ;
 
+    s/\\COMMENT(verb\*?|$LSTINLINEENV)/\\$1/mg ;
 
 #    Change \QLEFTBRACE, \QRIGHTBRACE to \{,\}
     s/\\QLEFTBRACE /\\\{/sg;
@@ -3090,6 +3093,7 @@ sub postprocess {
     # Highligh added inline verbatim commands if possible
     if ( $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat_n\])?\{color\}/ )   { 
       # wrap added verb commands with color commands
+      1 while s/(\%.*)\\DIFDIF(?:add|del)(verb\*?|$LSTINLINEENV)/$1\\DIF$2/mg;
       s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/sg;
       s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/sg;
     } else {
@@ -3098,7 +3102,8 @@ sub postprocess {
       s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD\n)//sg;
     }
     # expand \verb and friends inline arguments
-    s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/esg;
+#    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
+    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
     # add basicstyle color{blue} to added lstinline commands
     # finally add the comment to the ones not having an optional argument before
     ###s/\\DIFaddlstinline(?!\[)/\\lstinline\n[basicstyle=\\color{blue}]$AUXCMD\n/g;
