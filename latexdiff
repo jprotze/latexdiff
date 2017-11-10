@@ -2430,6 +2430,8 @@ sub preprocess {
     # transform \lstinline{...}
 #    s/\\lstinline(\[$brat0\])?(\{(?:.*?)\})/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
 #    s/\\lstinline(\[$brat0\])?((\S).*?\2)/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
+
+    # Mark inline-verb in commented lines to be COMMENTverb (no hashing, no marking with color)
     1 while s/((?<!\\)%.*)\\(verb\*?|$LSTINLINEENV)/$1\\COMMENT$2/mg;
     s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
     s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
@@ -3084,6 +3086,7 @@ sub postprocess {
     1 while s/(%.*)\\CRIGHTBRACE (.*)$/$1\}$2/mg ;
     1 while s/(%.*)\\CLEFTBRACE (.*)$/$1\{$2/mg ;
 
+    # Patch back inline-verb in comments
     s/\\COMMENT(verb\*?|$LSTINLINEENV)/\\$1/mg ;
 
 #    Change \QLEFTBRACE, \QRIGHTBRACE to \{,\}
@@ -3092,6 +3095,7 @@ sub postprocess {
     s/\\AMPERSAND /\\&/sg;
     # Highligh added inline verbatim commands if possible
     if ( $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat_n\])?\{color\}/ )   { 
+      # if there is a comment, that we did not catch with COMMENTverb, just ignore the diff
       # wrap added verb commands with color commands
       1 while s/(\%.*)\\DIFDIF(?:add|del)(verb\*?|$LSTINLINEENV)/$1\\DIF$2/mg;
       s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
@@ -3103,6 +3107,7 @@ sub postprocess {
     }
     # expand \verb and friends inline arguments
 #    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
+    # make sure to unpack nested inline-verb ;)
     1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
     # add basicstyle color{blue} to added lstinline commands
     # finally add the comment to the ones not having an optional argument before
