@@ -2431,9 +2431,9 @@ sub preprocess {
 #    s/\\lstinline(\[$brat0\])?(\{(?:.*?)\})/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
 #    s/\\lstinline(\[$brat0\])?((\S).*?\2)/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
     1 while s/((?<!\\)%.*)\\(verb\*?|$LSTINLINEENV)/$1\\COMMENT$2/mg;
-    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/esg;
-    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/esg;
-    s/\\(verb\*?|$LSTINLINEENV)([^\s\w])(.*?)\2/"\\DIF${1}{". tohash(\%verbhash,"${2}${3}${2}") ."}"/esg;
+    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
+    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
+    s/\\(verb\*?|$LSTINLINEENV)([^\s\w])(.*?)\2/"\\DIF${1}{". tohash(\%verbhash,"${2}${3}${2}") ."}"/eg;
 
     #    Change \{ to \QLEFTBRACE, \} to \QRIGHTBRACE, and \& to \AMPERSAND
 ###    print STDERR "Preprocess 0\n" if $debug;
@@ -3094,12 +3094,12 @@ sub postprocess {
     if ( $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat_n\])?\{color\}/ )   { 
       # wrap added verb commands with color commands
       1 while s/(\%.*)\\DIFDIF(?:add|del)(verb\*?|$LSTINLINEENV)/$1\\DIF$2/mg;
-      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/sg;
-      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/sg;
+      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
+      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/g;
     } else {
       # currently if colour markup is not used just remove the added mark
-      s/\\DIFDIFadd(verb\*?|$LSTINLINEENV)/\\DIF$1/sg;
-      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD\n)//sg;
+      s/\\DIFDIFadd(verb\*?|$LSTINLINEENV)/\\DIF$1/g;
+      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD\n)//g;
     }
     # expand \verb and friends inline arguments
 #    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
