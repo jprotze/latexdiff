@@ -540,7 +540,7 @@ foreach $diff ( @difffiles ) {
     } elsif ( $run ) {
       if ( $onlychanges ) {
 	my @pages=findchangedpages("$diffbase.aux");
-	###      print ("Running pdftk \"$diffbase.pdf\" cat " . join(" ",@pages) . " output \"$diffbase-changedpage.pdf\"\n") or 
+	print ("Running pdftk \"$diffbase.pdf\" cat " . join(" ",@pages) . " output \"$diffbase-changedpage.pdf\"\n");
         my $qpdf = `which qpdf`;
         $qpdf =~ s/^\s+|\s+$//g;
         my $pdftk = `which pdftk`;
@@ -552,7 +552,7 @@ foreach $diff ( @difffiles ) {
           system ("pdftk \"$diffbase.pdf\" cat " . join(" ",@pages) . " output \"$diffbase-changedpage.pdf\"")==0 or
             die ("Could not execute <pdftk $diffbase.pdf cat " . join(" ",@pages) . " output $diffbase-changedpage.pdf> . Return code: $?");
         }
-	move("$diffbase-changedpage.pdf","$diffbase.pdf");
+	copy("$diffbase-changedpage.pdf","$diffbase.pdf");
       }
       push @ptmpfiles, "$diffbase.aux","$diffbase.log";
     }
