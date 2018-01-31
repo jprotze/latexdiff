@@ -327,7 +327,7 @@ my ($type,$subtype,$floattype,$config,$preamblefile,$encoding,$nolabel,$visiblel
     $replacecontext1,$appendcontext1,
     $replacecontext2,$appendcontext2,
     $help,$verbose,$driver,$version,$ignorewarnings,
-    $enablecitmark,$disablecitmark,$allowspaces,$flatten,$debug,$earlylatexdiffpreamble);  ###$disablemathmark,
+    $enablecitmark,$disablecitmark,$allowspaces,$flatten,$nolinks,$debug,$earlylatexdiffpreamble);  ###$disablemathmark,
 my ($mboxsafe);
 # MNEMNONICS for mathmarkup
 my $mathmarkup;
@@ -422,6 +422,7 @@ GetOptions('type|t=s' => \$type,
 	   'ignore-warnings' => \$ignorewarnings,
 	   'driver=s'=> \$driver,
 	   'flatten' => \$flatten,
+	   'nolinks' => \$nolinks,
 	   'version' => \$version,
 	   'help|h' => \$help,
 	   'debug!' => \$debug );
@@ -947,6 +948,10 @@ if (defined $packages{"hyperref"} ) {
   $latexdiffpreamble =~ s/\{\\DIFadd\}/{\\DIFaddtex}/g;
   $latexdiffpreamble =~ s/\{\\DIFdel\}/{\\DIFdeltex}/g;
   $latexdiffpreamble .= join "\n",(extrapream("HYPERREF"),"");
+  if($nolinks){
+    $newpreamble =~ s/\{hyperref\}/{nohyperref}\n\\usepackage{url}/g;
+    $oldpreamble =~ s/\{hyperref\}/{nohyperref}\n\\usepackage{url}/g;
+  }
   ###    $latexdiffpreamble .= '%DIF PREAMBLE EXTENSION ADDED BY LATEXDIFF FOR HYPERREF PACKAGE' . "\n";
   ###    $latexdiffpreamble .= '\providecommand{\DIFadd}[1]{\texorpdfstring{\DIFaddtex{#1}}{#1}}' . "\n";
   ###    $latexdiffpreamble .= '\providecommand{\DIFdel}[1]{\texorpdfstring{\DIFdeltex{#1}}{}}' . "\n";
@@ -2833,7 +2838,7 @@ sub postprocess {
       ###  $delblock =~ s/\\DIFlstinline/\\DIFDIFdellstinline/g;
       ###}
       # Mark deleted verbose commands
-      $delblock =~ s/(${DELCMDOPEN}\\DIF((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{([-\d]*?)\}\s*).*)$/%\n\\DIFDIFdel$2${AUXCMD}\n$1/gm;
+      $delblock =~ s/(${DELCMDOPEN}\s*\\DIF((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{([-\d]*?)\}\s*).*)$/%\n\\DIFDIFdel$2${AUXCMD}\n$1/gm;
 
 #     splice in modified delblock
       substr($_,$begin,$len)=$delblock;
@@ -3103,8 +3108,10 @@ sub postprocess {
       # if there is a comment, that we did not catch with COMMENTverb, just ignore the diff
       # wrap added verb commands with color commands
       1 while s/(\%.*)\\DIFDIF(?:add|del)(verb\*?|$LSTINLINEENV)/$1\\DIF$2/mg;
-      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
-      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/g;
+#      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
+#      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/g;
+      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\\DIFadd\{$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
+      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\\DIFdel\{${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/g;
     } else {
       # currently if colour markup is not used just remove the added mark
       s/\\DIFDIFadd(verb\*?|$LSTINLINEENV)/\\DIF$1/g;
