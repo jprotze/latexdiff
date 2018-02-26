@@ -207,6 +207,7 @@ my %CONFIG=(
    LISTENV => undef ,  # list making environments - they will generally be kept
    VERBATIMENV => undef,      # Environments whose content should be treated as verbatim text and not be touched
    VERBATIMLINEENV => undef,  # Environments whose content should be treated as verbatim text and processed in line diff mode
+   LSTINLINEENV => undef,# Environments whose content should be treated as lstinline text and processed as lstinline
    CUSTOMDIFCMD => undef,# Custom dif command. Is defined in the document as a \DELcommand and \ADDcommand version to be replaced by the diff
    ITEMCMD => 'item'                    # command marking item in a list environment
 );
@@ -225,6 +226,7 @@ my ($ARRENV,
     $SCALEDELGRAPHICS,
     $VERBATIMENV,
     $VERBATIMLINEENV,
+    $LSTINLINEENV,
     $CUSTOMDIFCMD
     );
 
@@ -626,6 +628,7 @@ foreach  ( keys(%CONFIG) ) {
   elsif ( $_ eq "ARRENV" ) { $ARRENV = liststringtoregex($CONFIG{$_}) ; }
   elsif ( $_ eq "VERBATIMENV" ) { $VERBATIMENV = liststringtoregex($CONFIG{$_}) ; }
   elsif ( $_ eq "VERBATIMLINEENV" ) { $VERBATIMLINEENV = liststringtoregex($CONFIG{$_}) ; }
+  elsif ( $_ eq "LSTINLINEENV" ) { $LSTINLINEENV = liststringtoregex($CONFIG{$_}) ; }
   elsif ( $_ eq "CUSTOMDIFCMD" ) { $CUSTOMDIFCMD = liststringtoregex($CONFIG{$_}) ; }
   elsif ( $_ eq "COUNTERCMD" ) { $COUNTERCMD = liststringtoregex($CONFIG{$_}) ; }
   elsif ( $_ eq "SCALEDELGRAPHICS" ) { $SCALEDELGRAPHICS = $CONFIG{$_} ; }
@@ -1313,6 +1316,7 @@ sub show_configuration {
     print "SCALEDELGRAPHICS=$SCALEDELGRAPHICS\n";
     print "VERBATIMENV=$VERBATIMENV\n";
     print "VERBATIMLINEENV=$VERBATIMLINEENV\n";
+    print "LSTINLINEENV=$LSTINLINEENV\n";
     print "CUSTOMDIFCMD=$CUSTOMDIFCMD\n";
   }
 }
@@ -2449,9 +2453,12 @@ sub preprocess {
     # transform \lstinline{...}
 #    s/\\lstinline(\[$brat0\])?(\{(?:.*?)\})/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
 #    s/\\lstinline(\[$brat0\])?((\S).*?\2)/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
-    s/\\lstinline((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
-    s/\\lstinline((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIFlstinline". $1 ."{". tohash(\%verbhash,"$2") ."}"/esg;
-    s/\\(verb\*?|lstinline)([^\s\w])(.*?)\2/"\\DIF${1}{". tohash(\%verbhash,"${2}${3}${2}") ."}"/esg;
+
+    # Mark inline-verb in commented lines to be COMMENTverb (no hashing, no marking with color)
+    1 while s/((?<!\\)%.*)\\(verb\*?|$LSTINLINEENV)/$1\\COMMENT$2/mg;
+    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(\{(?:.*?)\})/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
+    s/\\($LSTINLINEENV)((?:\[$brat_n\])?)(([^\s\w]).*?\3)/"\\DIF${1}". $2 ."{". tohash(\%verbhash,"$3") ."}"/eg;
+    s/\\(verb\*?|$LSTINLINEENV)([^\s\w])(.*?)\2/"\\DIF${1}{". tohash(\%verbhash,"${2}${3}${2}") ."}"/eg;
 
     #    Change \{ to \QLEFTBRACE, \} to \QRIGHTBRACE, and \& to \AMPERSAND
 ###    print STDERR "Preprocess 0\n" if $debug;
@@ -2844,7 +2851,7 @@ sub postprocess {
       ###  $delblock =~ s/\\DIFlstinline/\\DIFDIFdellstinline/g;
       ###}
       # Mark deleted verbose commands
-      $delblock =~ s/(${DELCMDOPEN}\\DIF((?:verb\*?|lstinline(?:\[$brat_n\])?)\{([-\d]*?)\}\s*).*)$/%\n\\DIFDIFdel$2${AUXCMD}\n$1/gm;
+      $delblock =~ s/(${DELCMDOPEN}.*)\\DIF((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{([-\d]*?)\}\s*)(.*)$/$1${DELCMDCLOSE}\\DIFDIFdel$2${AUXCMD}\n${DELCMDOPEN}$3/gm;
       if( $CUSTOMDIFCMD ) {
         $delblock =~ s/(${DELCMDOPEN}.*)\\($CUSTOMDIFCMD)/$1${DELCMDCLOSE}\\DEL$2/gm;
       }
@@ -2890,7 +2897,7 @@ sub postprocess {
       ###if ( defined($packages{"listings"} and $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat0\])?\{color\}/))   { 
 	# mark added verbatim commands
       $addblock =~ s/\\DIFverb/\\DIFDIFaddverb/g;
-      $addblock =~ s/\\DIFlstinline/\\DIFDIFaddlstinline/g;
+      $addblock =~ s/\\DIF($LSTINLINEENV)/\\DIFDIFadd$1/g;
       if( $CUSTOMDIFCMD ) {
         $addblock =~ s/\\($CUSTOMDIFCMD)/\\ADD$1/g;
       }
@@ -3109,6 +3116,8 @@ sub postprocess {
     1 while s/(%.*)\\CRIGHTBRACE (.*)$/$1\}$2/mg ;
     1 while s/(%.*)\\CLEFTBRACE (.*)$/$1\{$2/mg ;
 
+    # Patch back inline-verb in comments
+    s/\\COMMENT(verb\*?|$LSTINLINEENV)/\\$1/mg ;
 
 #    Change \QLEFTBRACE, \QRIGHTBRACE to \{,\}
     s/\\QLEFTBRACE /\\\{/sg;
@@ -3116,16 +3125,20 @@ sub postprocess {
     s/\\AMPERSAND /\\&/sg;
     # Highligh added inline verbatim commands if possible
     if ( $latexdiffpreamble =~ /\\RequirePackage(?:\[$brat_n\])?\{color\}/ )   { 
+      # if there is a comment, that we did not catch with COMMENTverb, just ignore the diff
+      1 while s/(\%.*)\\DIFDIF(?:add|del)(verb\*?|$LSTINLINEENV)/$1\\DIF$2/mg;
       # wrap added verb commands with color commands
-      s/\\DIFDIFadd((?:verb\*?|lstinline(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\{\\color{blue}$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/sg;
-      s/\\DIFDIFdel((?:verb\*?|lstinline(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\{\\color{red}${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/sg;
+      s/\\DIFDIFadd((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*)/\\DIFadd\{$AUXCMD\n\\DIF$1%\n\}$AUXCMD\n/g;
+      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD)/\\DIFdel\{${AUXCMD}\n\\DIF$1\n\}${AUXCMD}/g;
     } else {
       # currently if colour markup is not used just remove the added mark
-      s/\\DIFDIFadd(verb\*?|lstinline)/\\DIF$1/sg;
-      s/\\DIFDIFdel((?:verb\*?|lstinline(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD\n)//sg;
+      s/\\DIFDIFadd(verb\*?|$LSTINLINEENV)/\\DIF$1/g;
+      s/\\DIFDIFdel((?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?)\{[-\d]*?\}[\s\n]*$AUXCMD\n)//g;
     }
     # expand \verb and friends inline arguments
-    s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|lstinline(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/esg;
+#    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
+    # make sure to unpack nested inline-verb ;)
+    1 while s/\\DIF((?:DIFadd|DIFdel)?(?:verb\*?|$LSTINLINEENV(?:\[$brat_n\])?))\{([-\d]*?)\}/"\\${1}". fromhash(\%verbhash,$2)/meg;
     # add basicstyle color{blue} to added lstinline commands
     # finally add the comment to the ones not having an optional argument before
     ###s/\\DIFaddlstinline(?!\[)/\\lstinline\n[basicstyle=\\color{blue}]$AUXCMD\n/g;
@@ -3571,6 +3584,7 @@ be real files (not pipes or similar) as they are opened twice.
                           SCALEDELGRAPHICS (Float)
                           VERBATIMENV (RegEx)
                           VERBATIMLINEENV (RegEx)
+                          LSTINLINEENV (RegEx)
                           CUSTOMDIFCMD (RegEx)
                        This option can be repeated.
 
@@ -4882,6 +4896,10 @@ comment
 lstlisting
 verbatim[*]?
 %%END VERBATIMLINEENV CONFIG
+
+%%BEGIN LSTINLINEENV CONFIG
+lstinline
+%%END LSTINLINEENV CONFIG
 
 %%BEGIN CUSTOMDIFCMD CONFIG
 %%END CUSTOMDIFCMD CONFIG
