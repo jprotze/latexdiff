@@ -13,6 +13,8 @@ default:
 
 distribution: mkdirs dist/latexdiff dist/latexrevise dist/latexdiff-so dist/latexdiff-fast dist/latexdiff-vc dist/latexdiff.1 dist/latexrevise.1 dist/latexdiff-vc.1 dist/doc/latexdiff-man.pdf dist/example/example-draft.tex dist/example/example-rev.tex dist/doc/example-diff.tex dist/doc/latexdiff-man.tex dist/COPYING dist/README dist/contrib dist/Makefile
 
+omp-dist: mkdirs dist/latexdiff dist/latexrevise dist/latexdiff-so dist/latexdiff-fast dist/latexdiff-vc dist/COPYING dist/README dist/contrib dist/Makefile
+
 mkdirs: dist
 	mkdir -p dist/doc
 	mkdir -p dist/example
